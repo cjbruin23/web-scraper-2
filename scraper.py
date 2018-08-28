@@ -1,8 +1,27 @@
+from HTMLParser import HTMLParser
+import urllib
 import argparse
-import requests
-import re
 import sys
+import re
 
+
+class MyHTMLParser(HTMLParser):
+    def __init__(self):
+        # HTMLParser.__init__(self)
+        self.links = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'img':
+            for i in attrs:
+                if i[0] == 'src':
+                    self.links.append(i[1])
+        
+        if tag == 'a':
+            for i in attrs:
+                if i[0] == 'href':
+                    self.links.append(i[1])
+
+        return
 
 def get_emails(content):
     email_add = re.findall(r'''(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+'''
@@ -22,8 +41,7 @@ def get_emails(content):
     print '\nEmails'
     for email in email_add:
         print email
-    pass
-
+    return
 
 def get_phone(content):
     phone_nums = re.findall(r'1?\W*([2-9][0-8][0-9])'
@@ -35,30 +53,21 @@ def get_phone(content):
         fin_phone = '-'.join(phone[0:3])
         print fin_phone
 
-    pass
+    return
 
 
 def get_urls(content):
     print 'Urls'
-    link_matches = re.findall(r'http[s]?://(?:[a-zA-Z]'
-                              r'|[0-9]|[$-_@.&+]|[!*\(\),]'
-                              r'|(?:%[0-9a-fA-F][0-9a-fA-F]))+', content)
-    link_matches = list(set(link_matches))
-    for link in link_matches:
+
+    parser = MyHTMLParser()
+
+    parser.reset()
+    parser.feed(content)
+
+    link_list = list(set(parser.links))
+    for link in link_list:
         print link
 
-    pass
-
-
-def extract_html(url):
-    req = requests.get(url)
-    content = req.content
-
-    get_urls(content)
-
-    get_phone(content)
-
-    get_emails(content)
     return
 
 
@@ -67,6 +76,18 @@ def create_parser():
     parser.add_argument("url", help="url destination to extract data from")
 
     return parser
+
+def extract_html(url):
+    html_page = urllib.urlopen(url)
+    content = html_page.read()
+
+    get_urls(content)
+
+    get_phone(content)
+
+    get_emails(content)
+
+    return content
 
 
 def main(args):
@@ -77,8 +98,10 @@ def main(args):
         sys.exit(1)
 
     parsed_args = parser.parse_args(args)
-    extract_html(parsed_args.url)
+    content = extract_html(parsed_args.url)
 
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+
+
